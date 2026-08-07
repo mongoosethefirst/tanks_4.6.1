@@ -1,0 +1,57 @@
+name: Build TANKS V4.6.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: TANKS_V4.6.1_Windows
+          - os: macos-latest
+            artifact: TANKS_V4.6.1_macOS
+          - os: ubuntu-latest
+            artifact: TANKS_V4.6.1_Linux
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install pygame-ce pyinstaller
+
+      - name: Build game
+        run: python -m PyInstaller --noconfirm --clean --windowed --onedir --name TANKS_V4.6.1 --contents-directory files --hidden-import new --hidden-import join --hidden-import play_host --hidden-import play_client --hidden-import server --hidden-import network --hidden-import game_client_base --hidden-import paths home_page.py
+
+      - name: Arrange Windows/Linux release
+        if: runner.os != 'macOS'
+        shell: bash
+        run: |
+          mkdir -p release/tanks
+          cp -R dist/TANKS_V4.6.1/. release/tanks/
+          cp -R tanks/images release/tanks/images
+          cp -R tanks/fonts release/tanks/fonts
+
+      - name: Arrange macOS release
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          mkdir -p release/tanks
+          if [ -d "dist/TANKS_V4.6.1.app" ]; then cp -R "dist/TANKS_V4.6.1.app" release/tanks/; fi
+          if [ -d "dist/TANKS_V4.6.1" ]; then cp -R "dist/TANKS_V4.6.1/." release/tanks/; fi
+          cp -R tanks/images release/tanks/images
+          cp -R tanks/fonts release/tanks/fonts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: release/tanks/
