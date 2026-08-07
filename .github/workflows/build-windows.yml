@@ -1,0 +1,80 @@
+name: Build TANKS V4.6.1 Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pygame-ce pyinstaller
+
+      - name: Build game
+        run: >
+          python -m PyInstaller
+          --noconfirm
+          --clean
+          --windowed
+          --onedir
+          --name TANKS_V4.6.1
+          --contents-directory files
+          --hidden-import new
+          --hidden-import join
+          --hidden-import play_host
+          --hidden-import play_client
+          --hidden-import server
+          --hidden-import network
+          --hidden-import game_client_base
+          home_page.py
+
+      - name: Copy assets
+        shell: python
+        run: |
+          import shutil
+          import os
+
+          output = os.path.join("dist", "TANKS_V4.6.1")
+
+          shutil.copytree(
+              os.path.join("tanks", "images"),
+              os.path.join(output, "images"),
+              dirs_exist_ok=True
+          )
+
+          shutil.copytree(
+              os.path.join("tanks", "fonts"),
+              os.path.join(output, "fonts"),
+              dirs_exist_ok=True
+          )
+
+      - name: Show build contents
+        shell: python
+        run: |
+          import os
+
+          for root, dirs, files in os.walk("dist"):
+              level = root.replace("dist", "").count(os.sep)
+              indent = "  " * level
+              print(f"{indent}{os.path.basename(root)}/")
+
+              for file in files:
+                  print(f"{indent}  {file}")
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: TANKS_V4.6.1_Windows
+          path: dist/TANKS_V4.6.1/
+          if-no-files-found: error
